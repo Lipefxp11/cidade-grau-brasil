@@ -1,0 +1,91 @@
+name: Compilar Cidade Grau Android
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar projeto
+        uses: actions/checkout@v4
+
+      - name: Instalar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Instalar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar componentes Android
+        run: |
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" "cmdline-tools;latest" "cmake;3.10.2.4988404" "ndk;23.2.8568313"
+
+      - name: Baixar Godot 4.3
+        run: |
+          wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
+          unzip -q Godot_v4.3-stable_linux.x86_64.zip
+          chmod +x Godot_v4.3-stable_linux.x86_64
+          sudo mv Godot_v4.3-stable_linux.x86_64 /usr/local/bin/godot
+
+      - name: Instalar templates Android
+        run: |
+          wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_export_templates.tpz
+          mkdir -p "$HOME/.local/share/godot/export_templates/4.3.stable"
+          mkdir -p /tmp/godot-templates
+          unzip -q Godot_v4.3-stable_export_templates.tpz -d /tmp/godot-templates
+          find /tmp/godot-templates -name android_debug.apk -exec cp {} "$HOME/.local/share/godot/export_templates/4.3.stable/" \;
+          find /tmp/godot-templates -name android_release.apk -exec cp {} "$HOME/.local/share/godot/export_templates/4.3.stable/" \;
+          echo "4.3.stable" > "$HOME/.local/share/godot/export_templates/4.3.stable/version.txt"
+
+      - name: Configurar exportacao Android
+        run: |
+          cat > export_presets.cfg <<'PRESET'
+          [preset.0]
+          name="Android"
+          platform="Android"
+          runnable=true
+          dedicated_server=false
+          custom_features=""
+          export_filter="all_resources"
+          include_filter=""
+          exclude_filter=""
+          export_path="build/CidadeGrau.apk"
+          encryption_include_filters=""
+          encryption_exclude_filters=""
+          encrypt_pck=false
+          encrypt_directory=false
+
+          [preset.0.options]
+          custom_template/debug=""
+          custom_template/release=""
+          gradle_build/use_gradle_build=false
+          architectures/armeabi-v7a=false
+          architectures/arm64-v8a=true
+          architectures/x86=false
+          architectures/x86_64=false
+          package/unique_name="com.cidadegrau.brasil"
+          package/name="Cidade Grau - Brasil"
+          version/code=1
+          version/name="1.0"
+          screen/immersive_mode=true
+          PRESET
+          mkdir -p build
+
+      - name: Verificar projeto
+        run: godot --headless --editor --path . --quit
+
+      - name: Gerar APK
+        run: godot --headless --path . --export-debug "Android" build/CidadeGrau.apk
+
+      - name: Disponibilizar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cidade-Grau-Android
+          path: build/CidadeGrau.apk
+          if-no-files-found: error
