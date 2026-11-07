@@ -1,0 +1,26 @@
+name: Compilar Cidade Grau Android
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          accept-licenses: true
+
+      - name: Dar permissão de execução
+        run: chmod +x gradlew
+
+      - name: Compilar APK
+        run: ./gradlew assembleDebug
